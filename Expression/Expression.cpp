@@ -5,6 +5,8 @@
 #include <cmath>
 #include <memory>
 
+ConstNode::ConstNode(Type val) : value(val) {}
+
 Expression::Expression(Type val) : root(std::make_shared<ConstNode>(val)) {}
 
 
@@ -110,14 +112,14 @@ Expression ln(const Expression &expr)
     return Expression(newNode);
 }
 
-int main()
-{
+// int main()
+// {
 
-    std::string s = "x";
-    Expression b("x");
-    Expression a(5);
-    auto c = sin(a + b/a^a);
-    std::cout << a.to_string() << '\n';
-    std::cout << b.to_string() << '\n';
-    std::cout << c.to_string() << '\n';
-}
+//     std::string s = "x";
+//     Expression b("x");
+//     Expression a(5);
+//     auto c = sin(a + b/a^a);
+//     std::cout << a.to_string() << '\n';
+//     std::cout << b.to_string() << '\n';
+//     std::cout << c.to_string() << '\n';
+// }

@@ -31,7 +31,7 @@ enum class ExprType
     Exp  // exp(a) (экспонента)
 };
 
-std::string exprTypeToString(ExprType type)
+inline std::string exprToString(ExprType type)
 {
     switch (type)
     {
@@ -78,7 +78,7 @@ class ConstNode : public Node
     Type value;
 
 public:
-    ConstNode(Type val): value(val) {}
+    ConstNode(Type val);
 
     Type eval(const std::map<std::string, Type> &vars) const override
     {
@@ -154,7 +154,7 @@ public:
 
     std::string to_string() const override
     {
-        return left->to_string() + exprTypeToString(op) + right->to_string();
+        return left->to_string() + exprToString(op) + right->to_string();
     }
 
     std::shared_ptr<Node> clone() const override
@@ -191,7 +191,7 @@ public:
 
     std::string to_string() const override
     {
-        return exprTypeToString(func) + "(" + arg->to_string() + ")";
+        return exprToString(func) + "(" + arg->to_string() + ")";
     }
 
     std::shared_ptr<Node> clone() const override
