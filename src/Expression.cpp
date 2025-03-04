@@ -1,109 +1,123 @@
-#include <Expression.hpp>
-#include <ExprType.hpp>
+#include <C:\Users\Lenovo\projects\Expression\include\Expression.hpp>
 #include <map>
 #include <string>
+#include <iostream>
+#include <cmath>
+#include <memory>
 
-template <typename T>
-Expression<T>::Expression(T val) : root(std::make_shared<ConstNode<T>>(val)) {}
+Expression::Expression(Type val) : root(std::make_shared<ConstNode>(val)) {}
 
-template <typename T>
-Expression<T>::Expression(const std::string &var) : root(std::make_shared<VarNode<T>>(var)) {}
 
-template <typename T>
-Expression<T>::Expression(const Expression &other) : root(other.root->clone()) {}
+Expression::Expression(const std::string &var) : root(std::make_shared<VarNode>(var)) {}
 
-template <typename T>
-Expression<T>::Expression(Expression &&other) noexcept
+
+Expression::Expression(const char var[])
+{
+    root = std::make_shared<VarNode>(std::string(var));
+}
+
+Expression::Expression(const Expression &other) : root(other.root->clone()) {}
+
+Expression::Expression(Expression &&other) noexcept
     : root(std::move(other.root)) {}
 
-template <typename T>
-Expression<T>::Expression(std::shared_ptr<Node<T>> node) : root(node) {}
+Expression::Expression(std::shared_ptr<Node> node) : root(node) {}
 
-template <typename T>
-Expression<T> &Expression<T>::operator=(const Expression &other)
+Expression &Expression::operator=(const Expression &other)
 {
     root = other.root->clone();
     return *this;
 }
 
-template <typename T>
-Expression<T> &Expression<T>::operator=(Expression &&other) noexcept
+Expression &Expression::operator=(Expression &&other) noexcept
 {
     root = std::move(other.root);
     return *this;
 }
 
-template <typename T>
-Expression<T> Expression<T>::operator+(const Expression &other) const
+Expression Expression::operator+(const Expression &other) const
 {
-    auto newNode = std::make_shared<BinaryOpNode<T>>(ExprType::Add, this->root->clone(), other.root->cloтe());
+    auto newNode = std::make_shared<BinaryOpNode>(ExprType::Add, this->root->clone(), other.clone());
     return Expression(newNode);
 }
 
-template <typename T>
-Expression<T> Expression<T>::operator-(const Expression &other) const
+Expression Expression::operator-(const Expression &other) const
 {
-    auto newNode = std::make_shared<BinaryOpNode<T>>(ExprType::Subtract, this->root->clone(), other.root->clobe());
+    auto newNode = std::make_shared<BinaryOpNode>(ExprType::Subtract, this->root->clone(), other.clone());
     return Expression(newNode);
 }
 
-template <typename T>
-Expression<T> Expression<T>::operator*(const Expression &other) const
+Expression Expression::operator*(const Expression &other) const
 {
-    auto newNode = std::make_shared<BinaryOpNode<T>>(ExprType::Multiply, this->root->clone(), other.root->clobe());
+    auto newNode = std::make_shared<BinaryOpNode>(ExprType::Multiply, this->root->clone(), other.clone());
     return Expression(newNode);
 }
 
-template <typename T>
-Expression<T> Expression<T>::operator/(const Expression &other) const
+Expression Expression::operator/(const Expression &other) const
 {
-    auto newNode = std::make_shared<BinaryOpNode<T>>(ExprType::Divide, this->root->clone(), other.root->clobe());
+    auto newNode = std::make_shared<BinaryOpNode>(ExprType::Divide, this->root->clone(), other.clone());
     return Expression(newNode);
 }
 
-template <typename T>
-Expression<T> Expression<T>::operator^(const Expression &other) const
+Expression Expression::operator^(const Expression &other) const
 {
-    auto newNode = std::make_shared<BinaryOpNode<T>>(ExprType::Power, this->root->clone(), other.root->clobe());
+    auto newNode = std::make_shared<BinaryOpNode>(ExprType::Power, this->root->clone(), other.clone());
     return Expression(newNode);
 }
 
-template <typename T>
-T Expression<T>::eval(const std::map<std::string, T> &vars) const
+Type Expression::eval(const std::map<std::string, Type> &vars) const
 {
     return root->eval(vars);
 }
 
-template <typename T>
-std::string Expression<T>::to_string() const
+std::string Expression::to_string() const
 {
     return root->to_string();
 }
 
-template <typename T>
-Expression<T> sin(const Expression<T> &expr)
+std::shared_ptr<Node> Expression::clone() const
 {
-    auto newNode = std::make_shared<FunctionNode<T>>(ExprType::Sin, expr.root->clone());
+    return root->clone();
+}
+
+std::ostream &operator<<(std::ostream &out, const Expression &expr)
+{
+    out << expr.to_string();
+    return out;
+}
+
+Expression sin(const Expression &expr)
+{
+    auto newNode = std::make_shared<FunctionNode>(ExprType::Sin, expr.clone());
     return Expression(newNode);
 }
 
-template <typename T>
-Expression<T> cos(const Expression<T> &expr)
+Expression cos(const Expression &expr)
 {
-    auto newNode = std::make_shared<FunctionNode<T>>(ExprType::Cos, expr.root->clone());
+    auto newNode = std::make_shared<FunctionNode>(ExprType::Cos, expr.clone());
     return Expression(newNode);
 }
 
-template <typename T>
-Expression<T> exp(const Expression<T> &expr)
+Expression exp(const Expression &expr)
 {
-    auto newNode = std::make_shared<FunctionNode<T>>(ExprType::Exp, expr.root->clone());
+    auto newNode = std::make_shared<FunctionNode>(ExprType::Exp, expr.clone());
     return Expression(newNode);
 }
 
-template <typename T>
-Expression<T> ln(const Expression<T> &expr)
+Expression ln(const Expression &expr)
 {
-    auto newNode = std::make_shared<FunctionNode<T>>(ExprType::Ln, expr.root->clone());
+    auto newNode = std::make_shared<FunctionNode>(ExprType::Ln, expr.clone());
     return Expression(newNode);
-}//
+}
+
+int main()
+{
+
+    std::string s = "x";
+    Expression b("x");
+    Expression a(5);
+    auto c = sin(a + b/a^a);
+    std::cout << a.to_string() << '\n';
+    std::cout << b.to_string() << '\n';
+    std::cout << c.to_string() << '\n';
+}
