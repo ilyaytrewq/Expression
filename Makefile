@@ -1,13 +1,11 @@
 default_target:
-	cmake -S . -B build && cd build && make
+	cmake . -B build && cd build && make
 
 main:
 	cd build && ./main
 
-test:
-	cd build && ./test
+# test:
+# 	cd build && ./mathtest
 
-clean:
-	rm -rf build
-
-.PHONY: default_target main pi test clean
+clear:
+	rm -rf ./build
