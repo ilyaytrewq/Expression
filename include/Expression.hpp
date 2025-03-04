@@ -32,7 +32,7 @@ public:
 
     std::string to_string() const;
 
-    friend std::ostream &operator<<(std::ostream &out, const Expression &expr) const;
+    friend std::ostream &operator<<(std::ostream &out, const Expression &expr)
 };
 
 template <typename T>
