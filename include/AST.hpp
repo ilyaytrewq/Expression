@@ -6,6 +6,7 @@
 #include <cmath>
 #include <map>
 #include <ExprType.hpp>
+#include <stdexcept>
 
 template <typename T>
 class Node
@@ -23,7 +24,7 @@ class ConstNode : public Node<T>
     T value;
 
 public:
-    ConstNode(T val) value(val) {}
+    ConstNode(T val): value(val) {}
 
     T eval(const std::map<std::string, T> &vars) const override
     {
@@ -37,7 +38,7 @@ public:
 
     std::shared_ptr<Node<T>> clone() const override
     {
-        return std::make_shared<ConstantNode<T>>(value);
+        return std::make_shared<ConstNode<T>>(value);
     }
 };
 
@@ -51,7 +52,7 @@ public:
     T eval(const std::map<std::string, T> &vars) const override
     {
         if (vars.find(var) == vars.end())
-            throw std::runtime_error("Variable '" + name + "' is not provided");
+            throw std::runtime_error("Variable '" + var + "' is not provided");
 
         return vars[var];
     }
@@ -63,7 +64,7 @@ public:
 
     std::shared_ptr<Node<T>> clone() const override
     {
-        return std::make_shared<VariableNode<T>>(name);
+        return std::make_shared<VarNode<T>>(var);
     }
 };
 
@@ -118,7 +119,7 @@ private:
     std::shared_ptr<Node<T>> arg;
 
 public:
-    FunctionNode(ExprType func, std::shared_ptr<Node<T>> arg) func(func), arg(arg) {}
+    FunctionNode(ExprType func, std::shared_ptr<Node<T>> arg): func(func), arg(arg) {}
 
     T eval(const std::map<std::string, T> &vars) const override
     {
@@ -139,7 +140,7 @@ public:
 
     std::string to_string() const override
     {
-        return exprTypeToString(op) + "(" + arg->to_stirng() + ")";
+        return exprTypeToString(func) + "(" + arg->to_stirng() + ")";
     }
 
     std::shared_ptr<Node<T>> clone() const override
