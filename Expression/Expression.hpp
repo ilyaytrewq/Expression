@@ -5,202 +5,92 @@
 #include <map>
 #include <stdexcept>
 #include <cmath>
+#include <complex>
+#include <iostream>
+#include <type_traits>
 
-using Type = long double;
+using Real = long double;
+using Complex = std::complex<Real>;
 
-enum class ExprType
-{
-    // Базовые элементы
-    Constant, // Число (например, 5.8)
-    Variable, // Переменная (например, "x")
+template <typename T>
+concept Numeric = std::is_arithmetic_v<T> || (std::is_same_v<T, Complex>);
 
-    // Бинарные арифметические операции
-    Add,      // a + b
-    Subtract, // a - b
-    Multiply, // a * b
-    Divide,   // a / b
-    Power,    // a ^ b (возведение в степень)
+enum class ExprType;
 
-    // Унарные операции
-    Negate, // Унарный минус (-a)
+inline std::string ExprTypeToString(ExprType type);
 
-    // Функции
-    Sin, // sin(a)
-    Cos, // cos(a)
-    Ln,  // ln(a) (натуральный логарифм)
-    Exp  // exp(a) (экспонента)
-};
-
-inline std::string exprToString(ExprType type)
-{
-    switch (type)
-    {
-    case ExprType::Constant:
-        return "Const";
-    case ExprType::Variable:
-        return "Var";
-    case ExprType::Add:
-        return "+";
-    case ExprType::Subtract:
-        return "-";
-    case ExprType::Multiply:
-        return "*";
-    case ExprType::Divide:
-        return "/";
-    case ExprType::Power:
-        return "^";
-    case ExprType::Negate:
-        return "-";
-    case ExprType::Sin:
-        return "sin";
-    case ExprType::Cos:
-        return "cos";
-    case ExprType::Ln:
-        return "ln";
-    case ExprType::Exp:
-        return "exp";
-    default:
-        return "Unknown";
-    }
-}
-
+template <Numeric T>
 class Node
 {
 public:
     virtual ~Node() = default;
-    virtual Type eval(const std::map<std::string, Type> &vars) const = 0;
+    virtual T eval(const std::map<std::string, T> &vars) const = 0;
     virtual std::string to_string() const = 0;
-    virtual std::shared_ptr<Node> clone() const = 0;
+    virtual std::shared_ptr<Node<T>> clone() const = 0;
 };
 
-class ConstNode : public Node
+template <Numeric T>
+class ConstNode : public Node<T>
 {
-    Type value;
+    T value;
 
 public:
-    ConstNode(Type val);
+    ConstNode(T val);
 
-    Type eval(const std::map<std::string, Type> &vars) const override
-    {
-        return value;
-    }
+    T eval(const std::map<std::string, T> &vars) const override;
 
-    std::string to_string() const override
-    {
-        return std::to_string(value);
-    }
+    std::string to_string() const override;
 
-    std::shared_ptr<Node> clone() const override
-    {
-        return std::make_shared<ConstNode>(value);
-    }
+    std::shared_ptr<Node<T>> clone() const override;
 };
 
-class VarNode : public Node
+template <Numeric T>
+class VarNode : public Node<T>
 {
     std::string var;
 
 public:
     VarNode(std::string var) : var(var) {}
-    Type eval(const std::map<std::string, Type> &vars) const override
-    {
-        if (vars.find(var) == vars.end())
-            throw std::runtime_error("Variable '" + var + "' is not provided");
+    T eval(const std::map<std::string, T> &vars) const override;
 
-        return vars.find(var)->second;
-    }
+    std::string to_string() const override;
 
-    std::string to_string() const override
-    {
-        return var;
-    }
-
-    std::shared_ptr<Node> clone() const override
-    {
-        return std::make_shared<VarNode>(var);
-    }
+    std::shared_ptr<Node<T>> clone() const override;
 };
 
-class BinaryOpNode : public Node
+template <Numeric T>
+class BinaryOpNode : public Node<T>
 {
 private:
     ExprType op;
-    std::shared_ptr<Node> left, right;
+    std::shared_ptr<Node<T>> left, right;
 
 public:
-    BinaryOpNode(ExprType op, std::shared_ptr<Node> l, std::shared_ptr<Node> r) : op(op), left(l), right(r) {}
+    BinaryOpNode(ExprType op, std::shared_ptr<Node<T>> l, std::shared_ptr<Node<T>> r);
 
-    Type eval(const std::map<std::string, Type> &vars) const override
-    {
-        Type left_val = left->eval(vars);
-        Type right_val = right->eval(vars);
+    T eval(const std::map<std::string, T> &vars) const override;
 
-        switch (op)
-        {
-        case ExprType::Add:
-            return left_val + right_val;
-        case ExprType::Subtract:
-            return left_val - right_val;
-        case ExprType::Multiply:
-            return left_val * right_val;
-        case ExprType::Divide:
-            return left_val / right_val;
-        case ExprType::Power:
-            return std::pow(left_val, right_val);
-        }
+    std::string to_string() const override;
 
-        throw std::runtime_error("Doesn`t exist operation");
-    }
-
-    std::string to_string() const override
-    {
-        return left->to_string() + exprToString(op) + right->to_string();
-    }
-
-    std::shared_ptr<Node> clone() const override
-    {
-        return std::make_shared<BinaryOpNode>(op, left->clone(), right->clone());
-    }
+    std::shared_ptr<Node<T>> clone() const override;
 };
 
-class FunctionNode : public Node
+template <Numeric T>
+class FunctionNode : public Node<T>
 {
 private:
     ExprType func;
-    std::shared_ptr<Node> arg;
+    std::shared_ptr<Node<T>> arg;
 
 public:
-    FunctionNode(ExprType func, std::shared_ptr<Node> arg): func(func), arg(arg) {}
+    FunctionNode(ExprType func, std::shared_ptr<Node<T>> arg);
 
-    Type eval(const std::map<std::string, Type> &vars) const override
-    {
-        Type arg_val = arg->eval(vars);
-        switch (func)
-        {
-        case ExprType::Sin:
-            return std::sin(arg_val);
-        case ExprType::Cos:
-            return std::cos(arg_val);
-        case ExprType::Exp:
-            return std::exp(arg_val);
-        case ExprType::Ln:
-            return std::log(arg_val);
-        }
-        throw std::runtime_error("Fuction doesn`t exist");
-    }
+    T eval(const std::map<std::string, T> &vars) const override;
 
-    std::string to_string() const override
-    {
-        return exprToString(func) + "(" + arg->to_string() + ")";
-    }
+    std::string to_string() const override;
 
-    std::shared_ptr<Node> clone() const override
-    {
-        return std::make_shared<FunctionNode>(func, arg->clone());
-    }
+    std::shared_ptr<Node<T>> clone() const override;
 };
-
-
 
 /*
 =====================
@@ -208,19 +98,17 @@ EXPRESSION CLASS
 =====================
 */
 
-
-
+template <Numeric T = Real>
 class Expression
 {
 private:
-    std::shared_ptr<Node> root;
-
+    std::shared_ptr<Node<T>> root;
 
 public:
-    Expression(Type val);
+    Expression(T val);
     Expression(const std::string &var);
     Expression(const char var[]);
-    explicit Expression(std::shared_ptr<Node> node);
+    explicit Expression(std::shared_ptr<Node<T>> node);
     Expression(const Expression &other);     // Копирование
     Expression(Expression &&other) noexcept; // Перемещение
 
@@ -233,26 +121,19 @@ public:
     Expression operator/(const Expression &other) const;
     Expression operator^(const Expression &other) const;
 
-    Type eval(const std::map<std::string, Type> &vars) const;
+    T eval(const std::map<std::string, T> &vars) const;
 
     std::string to_string() const;
 
-    std::shared_ptr<Node> clone() const; 
+    std::shared_ptr<Node<T>> clone() const;
+
+    Expression sin() const;
+    Expression cos() const;
+    Expression exp() const;
+    Expression ln() const;
 };
 
-template<typename Type>
-std::ostream &operator<<(std::ostream &out, const Expression &expr);
-
-template <typename Type>
-Expression sin(const Expression &expr);
-
-template <typename Type>
-Expression cos(const Expression &expr);
-
-template <typename Type>
-Expression exp(const Expression &expr);
-
-template <typename Type>
-Expression ln(const Expression &expr);
+template <Numeric T>
+std::ostream &operator<<(std::ostream &out, const Expression<T> &expr);
 
 #endif // Expression_HPP
