@@ -15,9 +15,17 @@ using Complex = std::complex<Real>;
 template <typename T>
 concept Numeric = std::is_arithmetic_v<T> || (std::is_same_v<T, Complex>);
 
-enum class ExprType;
+/*==========*/
+/*ExprType*/
+/*==========*/
+
+enum class ExprType : char;
 
 inline std::string ExprTypeToString(ExprType type);
+
+/*===========*/
+/*AST*/
+/*==========*/
 
 template <Numeric T>
 class Node
@@ -27,6 +35,7 @@ public:
     virtual T eval(const std::map<std::string, T> &vars) const = 0;
     virtual std::string to_string() const = 0;
     virtual std::shared_ptr<Node<T>> clone() const = 0;
+    virtual std::shared_ptr<Node<T>> diff(const std::string &dvar) const = 0;
 };
 
 template <Numeric T>
@@ -42,6 +51,8 @@ public:
     std::string to_string() const override;
 
     std::shared_ptr<Node<T>> clone() const override;
+
+    std::shared_ptr<Node<T>> diff(const std::string &var) const override;
 };
 
 template <Numeric T>
@@ -56,6 +67,8 @@ public:
     std::string to_string() const override;
 
     std::shared_ptr<Node<T>> clone() const override;
+
+    std::shared_ptr<Node<T>> diff(const std::string &dvar) const override;
 };
 
 template <Numeric T>
@@ -73,6 +86,8 @@ public:
     std::string to_string() const override;
 
     std::shared_ptr<Node<T>> clone() const override;
+
+    std::shared_ptr<Node<T>> diff(const std::string &dvar) const override;
 };
 
 template <Numeric T>
@@ -90,6 +105,8 @@ public:
     std::string to_string() const override;
 
     std::shared_ptr<Node<T>> clone() const override;
+
+    std::shared_ptr<Node<T>> diff(const std::string &dvar) const override;
 };
 
 /*
@@ -131,16 +148,18 @@ public:
     Expression cos() const;
     Expression exp() const;
     Expression ln() const;
+
+    Expression diff(const std::string &dvar) const;
 };
 
 template <Numeric T>
 std::ostream &operator<<(std::ostream &out, const Expression<T> &expr);
 
+/*==========*/
+/*Realisation*/
+/*==========*/
 
-
-
-
-enum class ExprType
+enum class ExprType : char
 {
     // Базовые элементы
     Constant, // Число (например, 5.8)
@@ -221,6 +240,12 @@ std::shared_ptr<Node<T>> ConstNode<T>::clone() const
     return std::make_shared<ConstNode<T>>(value);
 }
 
+template <Numeric T>
+std::shared_ptr<Node<T>> ConstNode<T>::diff(const std::string &dvar) const
+{
+    return std::make_shared<ConstNode<T>>(0);
+}
+
 /*=========*/
 /*VarNode*/
 /*=========*/
@@ -244,6 +269,12 @@ template <Numeric T>
 std::shared_ptr<Node<T>> VarNode<T>::clone() const
 {
     return std::make_shared<VarNode<T>>(var);
+}
+
+template <Numeric T>
+std::shared_ptr<Node<T>> VarNode<T>::diff(const std::string &dvar) const
+{
+    return std::make_shared<ConstNode<T>>(var == dvar ? 1 : 0);
 }
 
 /*=========*/
@@ -279,13 +310,54 @@ T BinaryOpNode<T>::eval(const std::map<std::string, T> &vars) const
 template <Numeric T>
 std::string BinaryOpNode<T>::to_string() const
 {
-    return left->to_string() + ExprTypeToString(op) + right->to_string();
+    return "(" + left->to_string() + ExprTypeToString(op) + right->to_string() + ")";
 }
 
 template <Numeric T>
 std::shared_ptr<Node<T>> BinaryOpNode<T>::clone() const
 {
     return std::make_shared<BinaryOpNode<T>>(op, left->clone(), right->clone());
+}
+
+template <Numeric T>
+std::shared_ptr<Node<T>> BinaryOpNode<T>::diff(const std::string &dvar) const
+{
+    auto left_diff = left->diff(dvar);
+    auto right_diff = right->diff(dvar);
+
+    switch (op)
+    {
+    case ExprType::Add:
+        return std::make_shared<BinaryOpNode<T>>(ExprType::Add, left_diff->clone(), right_diff->clone()); // проверить что кто-то равен 0
+    case ExprType::Subtract:
+        return std::make_shared<BinaryOpNode<T>>(ExprType::Subtract, left_diff->clone(), right_diff->clone());
+    case ExprType::Multiply:
+    {
+        auto new_left = std::make_shared<BinaryOpNode<T>>(ExprType::Multiply, left_diff->clone(), right->clone());
+        auto new_right = std::make_shared<BinaryOpNode<T>>(ExprType::Multiply, left->clone(), right_diff->clone());
+
+        return std::make_shared<BinaryOpNode<T>>(ExprType::Add, new_left->clone(), new_right->clone()); // проверить что кто-то равен
+    }
+    case ExprType::Divide:
+    {
+        auto new_sub_left = std::make_shared<BinaryOpNode<T>>(ExprType::Multiply, left_diff->clone(), right->clone());
+        auto new_sub_right = std::make_shared<BinaryOpNode<T>>(ExprType::Multiply, left->clone(), right_diff->clone());
+
+        auto num = std::make_shared<BinaryOpNode<T>>(ExprType::Subtract, new_sub_left->clone(), new_sub_right->clone());
+        auto den = std::make_shared<BinaryOpNode<T>>(ExprType::Power, right->clone(), std::make_shared<ConstNode<T>>(2));
+
+        return std::make_shared<BinaryOpNode<T>>(ExprType::Divide, num, den);
+    }
+    case ExprType::Power:
+    {
+        auto big_left_node = std::make_shared<BinaryOpNode<T>>(ExprType::Power, left->clone(), right->clone());
+        auto small_left_node = std::make_shared<BinaryOpNode<T>>(ExprType::Multiply, left_diff->clone(), std::make_shared<BinaryOpNode<T>>(ExprType::Divide, right->clone(), left->clone()));
+        auto small_right_node = std::make_shared<BinaryOpNode<T>>(ExprType::Multiply, right_diff->clone(), std::make_shared<FunctionNode<T>>(ExprType::Ln, left));
+        auto big_right_node = std::make_shared<BinaryOpNode<T>>(ExprType::Add, small_left_node, small_right_node);
+        return std::make_shared<BinaryOpNode<T>>(ExprType::Multiply, big_left_node, big_right_node);
+    }
+    }
+    throw std::runtime_error("Doesn`t exist operation");
 }
 
 /*=========*/
@@ -323,6 +395,50 @@ template <Numeric T>
 std::shared_ptr<Node<T>> FunctionNode<T>::clone() const
 {
     return std::make_shared<FunctionNode<T>>(func, arg->clone());
+}
+
+template <Numeric T>
+std::shared_ptr<Node<T>> FunctionNode<T>::diff(const std::string &dvar) const
+{
+    auto arg_diff = arg->diff(dvar);
+    std::shared_ptr<Node<T>> new_node;
+    switch (func)
+    {
+    case ExprType::Sin:
+    {
+        new_node = std::make_shared<FunctionNode<T>>(ExprType::Cos, arg->clone());
+        return std::make_shared<BinaryOpNode<T>>(ExprType::Multiply, new_node->clone(), arg_diff->clone());
+    }
+    case ExprType::Cos:
+    {
+        auto new_node = std::make_shared<FunctionNode<T>>(ExprType::Sin, arg->clone());
+        auto neg_node = std::make_shared<BinaryOpNode<T>>(
+            ExprType::Multiply,
+            std::make_shared<ConstNode<T>>(-1),
+            new_node);
+        return std::make_shared<BinaryOpNode<T>>(
+            ExprType::Multiply,
+            neg_node,
+            arg_diff->clone());
+    }
+    case ExprType::Exp:
+    {
+        new_node = std::make_shared<FunctionNode<T>>(ExprType::Exp, arg->clone());
+        return std::make_shared<BinaryOpNode<T>>(ExprType::Multiply, new_node->clone(), arg_diff->clone());
+    }
+    case ExprType::Ln:
+    {
+        auto reciprocal = std::make_shared<BinaryOpNode<T>>(
+            ExprType::Divide,
+            std::make_shared<ConstNode<T>>(1),
+            arg->clone());
+        return std::make_shared<BinaryOpNode<T>>(
+            ExprType::Multiply,
+            reciprocal,
+            arg_diff->clone());
+    }
+    }
+    throw std::runtime_error("Fuction doesn`t exist");
 }
 
 /*=========*/
@@ -466,6 +582,10 @@ Expression<T> Expression<T>::ln() const
     return Expression<T>(newNode);
 }
 
+template <Numeric T>
+Expression<T> Expression<T>::diff(const std::string &dvar) const
+{
+    return Expression<T>(root->diff(dvar));
+}
+
 #endif // Expression_HPP
-
-
