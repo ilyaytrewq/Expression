@@ -1,34 +1,58 @@
-cmake_minimum_required(VERSION 3.19)
+#include <gtest/gtest.h>
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+#include "Expression.hpp"
 
-project(symcpp)
+TEST(ExpressionParsingTest, SimpleAddition) {
+    auto expr = make_expression<Real>("2 + 3");
+    EXPECT_EQ(expr.eval({}), 5);
+}
 
-include(FetchContent)
+TEST(ExpressionParsingTest, VariableEvaluation) {
+    auto expr = make_expression<Real>("x + 3");
+    std::map<std::string, Real> vars = {{"x", 2}};
+    EXPECT_EQ(expr.eval(vars), 5);
+}
 
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-FetchContent_Declare(
-    googletest
-    GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG release-1.12.1
-)
-FetchContent_MakeAvailable(googletest)
+TEST(ExpressionParsingTest, MultiplicationAndDivision) {
+    auto expr = make_expression<Real>("2 * x / 4");
+    std::map<std::string, Real> vars = {{"x", 8}};
+    EXPECT_EQ(expr.eval(vars), 4);
+}
 
-FetchContent_Declare(
-    cxxopts
-    GIT_REPOSITORY https://github.com/jarro2783/cxxopts.git
-    GIT_TAG        v3.1.0
-)
-FetchContent_MakeAvailable(cxxopts)
+TEST(ExpressionParsingTest, PowerFunction) {
+    auto expr = make_expression<Real>("x ^ 2");
+    std::map<std::string, Real> vars = {{"x", 3}};
+    EXPECT_EQ(expr.eval(vars), 9);
+}
 
-file(GLOB SRC src/*.cpp)
-add_library(src STATIC ${SRC})
+TEST(ExpressionParsingTest, SinFunction) {
+    auto expr = make_expression<Real>("sin(x)");
+    std::map<std::string, Real> vars = {{"x", 0}};
+    EXPECT_EQ(expr.eval(vars), 0);
+}
 
-include_directories(include)
+TEST(SymbolicDifferentiationTest, PowerFunction) {
+    auto expr = make_expression<Real>("x ^ 2");
+    auto diff_expr = expr.diff("x");
+    std::map<std::string, Real> vars = {{"x", 2}};
+    EXPECT_EQ(diff_expr.eval(vars), 4);
+}
 
-add_executable(tests test/test.cpp)
-target_link_libraries(tests gtest gtest_main)
+TEST(SymbolicDifferentiationTest, SinFunction) {
+    auto expr = make_expression<Real>("sin(x)");
+    auto diff_expr = expr.diff("x");
+    std::map<std::string, Real> vars = {{"x", 0}};
+    EXPECT_EQ(diff_expr.eval(vars), 1);
+}
 
-add_executable(main main.cpp)
-target_link_libraries(main gtest gtest_main)
+TEST(SymbolicDifferentiationTest, LnFunction) {
+    auto expr = make_expression<Real>("ln(x)");
+    auto diff_expr = expr.diff("x");
+    std::map<std::string, Real> vars = {{"x", 1}};
+    EXPECT_EQ(diff_expr.eval(vars), 1);
+}
+
+int main(int argc, char **argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}

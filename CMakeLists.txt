@@ -30,5 +30,5 @@ include_directories(include)
 add_executable(tests test/test.cpp)
 target_link_libraries(tests gtest gtest_main)
 
-add_executable(main test/test.cpp)
+add_executable(main main.cpp)
 target_link_libraries(main gtest gtest_main)
