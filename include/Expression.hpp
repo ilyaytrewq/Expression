@@ -33,12 +33,14 @@ inline std::string ExprTypeToString(ExprType type);
 template <Numeric T>
 class Node
 {
+
 public:
     virtual ~Node() = default;
     virtual T eval(const std::map<std::string, T> &vars) const = 0;
     virtual std::string to_string() const = 0;
     virtual std::shared_ptr<Node<T>> clone() const = 0;
     virtual std::shared_ptr<Node<T>> diff(const std::string &dvar) const = 0;
+    virtual ExprType getType() const = 0;
 };
 
 template <Numeric T>
@@ -57,6 +59,10 @@ public:
     std::shared_ptr<Node<T>> clone() const override;
 
     std::shared_ptr<Node<T>> diff(const std::string &var) const override;
+
+    ExprType getType() const override { return type; }
+
+    T getVal() { return value; }
 };
 
 template <Numeric T>
@@ -75,6 +81,8 @@ public:
     std::shared_ptr<Node<T>> clone() const override;
 
     std::shared_ptr<Node<T>> diff(const std::string &dvar) const override;
+
+    ExprType getType() const override { return type; }
 };
 
 template <Numeric T>
@@ -94,6 +102,8 @@ public:
     std::shared_ptr<Node<T>> clone() const override;
 
     std::shared_ptr<Node<T>> diff(const std::string &dvar) const override;
+
+    ExprType getType() const override { return type; }
 };
 
 template <Numeric T>
@@ -113,6 +123,8 @@ public:
     std::shared_ptr<Node<T>> clone() const override;
 
     std::shared_ptr<Node<T>> diff(const std::string &dvar) const override;
+
+    ExprType getType() const override { return type; }
 };
 
 /*
@@ -309,6 +321,8 @@ std::shared_ptr<Node<T>> del_zero(ExprType type, std::shared_ptr<Node<T>> l, std
         return r;
     if (is_zero<T>(r))
         return l;
+    if (l->getType() == ExprType::Constant && r->getType() == ExprType::Constant)
+        return std::static_pointer_cast<Node<T>>(std::make_shared<ConstNode<T>>(l->eval({}) + (type == ExprType::Add ? r->eval({}) : -r->eval({}))));
     return make<T>(type, l, r);
 }
 
@@ -321,6 +335,8 @@ std::shared_ptr<Node<T>> del_mult(ExprType type, std::shared_ptr<Node<T>> l, std
         return l;
     if (is_zero<T>(l) || is_zero<T>(r))
         return std::make_shared<ConstNode<T>>(0);
+    if (l->getType() == ExprType::Constant && r->getType() == ExprType::Constant)
+        return std::static_pointer_cast<Node<T>>(std::make_shared<ConstNode<T>>(l->eval({}) * r->eval({})));
     return make<T>(type, l, r);
 }
 
@@ -331,6 +347,8 @@ std::shared_ptr<Node<T>> del_div(ExprType type, std::shared_ptr<Node<T>> l, std:
         return l;
     if (is_zero<T>(l))
         return std::make_shared<ConstNode<T>>(0);
+    if (l->getType() == ExprType::Constant && r->getType() == ExprType::Constant)
+        return std::static_pointer_cast<Node<T>>(std::make_shared<ConstNode<T>>(l->eval({}) / r->eval({})));
     return make<T>(type, l, r);
 }
 
@@ -341,6 +359,8 @@ std::shared_ptr<Node<T>> del_pow(ExprType type, std::shared_ptr<Node<T>> l, std:
         return l;
     if (is_zero<T>(r))
         return std::make_shared<ConstNode<T>>(1);
+    if (l->getType() == ExprType::Constant && r->getType() == ExprType::Constant)
+        return std::static_pointer_cast<Node<T>>(std::make_shared<ConstNode<T>>(std::pow(l->eval({}), r->eval({}))));
     return make<T>(type, l, r);
 }
 
@@ -393,80 +413,41 @@ std::shared_ptr<Node<T>> BinaryOpNode<T>::diff(const std::string &dvar) const
     case ExprType::Add:
     {
         return del_zero(ExprType::Add, left_diff->clone(), right_diff->clone());
-
-        // if (is_zero(left_diff))
-        //     return right_diff->clone();
-        // if (is_zero(right_diff))
-        //     return left_diff->clone();
-        // return make(ExprType::Add, left_diff->clone(), right_diff->clone());
     }
     case ExprType::Subtract:
     {
         return del_zero(ExprType::Subtract, left_diff->clone(), right_diff->clone());
-
-        // if (is_zero(left_diff))
-        //     return right_diff->clone();
-        // if (is_zero(right_diff))
-        //     return left_diff->clone();
-        // return make(ExprType::Subtract, left_diff->clone(), right_diff->clone());
     }
     case ExprType::Multiply:
     {
 
         std::shared_ptr<Node<T>> new_left = del_mult(ExprType::Multiply, left_diff->clone(), right->clone());
-
-        // if (is_one(left_diff))
-        //     new_left = right->clone();
-        // else if (is_one(right))
-        //     new_left = left_diff->clone();
-        // else
-        //     make(ExprType::Multiply, left_diff->clone(), right->clone());
-
         std::shared_ptr<Node<T>> new_right = del_mult(ExprType::Multiply, left->clone(), right_diff->clone());
 
-        // if (is_one(left))
-        //     new_right = right_diff->clone();
-        // else if (is_one(right_diff))
-        //     new_right = left->clone();
-        // else
-        //     make(ExprType::Multiply, left->clone(), right_diff->clone());
-
         return del_zero(ExprType::Add, new_left->clone(), new_right->clone());
-
-        // return make(ExprType::Add, new_left->clone(), new_right->clone()); // проверить что кто-то равен
     }
     case ExprType::Divide:
     {
-        // auto new_sub_left = make(ExprType::Multiply, left_diff->clone(), right->clone());
         auto new_sub_left = del_mult(ExprType::Multiply, left_diff->clone(), right->clone());
 
-        // auto new_sub_right = make(ExprType::Multiply, left->clone(), right_diff->clone());
         auto new_sub_right = del_mult(ExprType::Multiply, left->clone(), right_diff->clone());
 
-        // auto num = make(ExprType::Subtract, new_sub_left->clone(), new_sub_right->clone());
         auto num = del_zero(ExprType::Subtract, new_sub_left->clone(), new_sub_right->clone());
 
-        // auto den = make(ExprType::Power, right->clone(), std::static_pointer_cast<Node<T>>(std::make_shared<ConstNode<T>>(2)));
         auto den = del_pow(ExprType::Power, right->clone(), std::static_pointer_cast<Node<T>>(std::make_shared<ConstNode<T>>(2)));
 
-        // return make(ExprType::Divide, num->clone(), den->clone());
         return del_div(ExprType::Divide, num->clone(), den->clone());
     }
     case ExprType::Power:
     {
-        // auto big_left_node = make(ExprType::Power, left->clone(), right->clone());
         auto big_left_node = del_pow(ExprType::Power, left->clone(), right->clone());
 
-        // auto small_left_node = make(ExprType::Multiply, left_diff->clone(), make(ExprType::Divide, right->clone(), left->clone()));
         auto small_left_node = del_mult(ExprType::Multiply, left_diff->clone(), del_div(ExprType::Divide, right->clone(), left->clone()));
 
-        // auto small_right_node = make(ExprType::Multiply, right_diff->clone(), std::static_pointer_cast<Node<T>>(std::make_shared<FunctionNode<T>>(ExprType::Ln, left)));
         auto small_right_node = del_mult(ExprType::Multiply, right_diff->clone(), std::static_pointer_cast<Node<T>>(std::make_shared<FunctionNode<T>>(ExprType::Ln, left)));
 
-        // auto big_right_node = make(ExprType::Add, small_left_node, small_right_node);
         auto big_right_node = del_zero(ExprType::Add, small_left_node, small_right_node);
 
-        // return make(ExprType::Multiply, big_left_node, big_right_node);
         return del_mult(ExprType::Multiply, big_left_node, big_right_node);
     }
     }
@@ -520,30 +501,25 @@ std::shared_ptr<Node<T>> FunctionNode<T>::diff(const std::string &dvar) const
     case ExprType::Sin:
     {
         new_node = std::make_shared<FunctionNode<T>>(ExprType::Cos, arg->clone());
-        // return make(ExprType::Multiply, new_node->clone(), arg_diff->clone());
         return del_mult(ExprType::Multiply, new_node->clone(), arg_diff->clone());
     }
     case ExprType::Cos:
     {
         auto new_node = std::make_shared<FunctionNode<T>>(ExprType::Sin, arg->clone());
-        // auto neg_node = make(ExprType::Multiply, std::static_pointer_cast<Node<T>>(std::make_shared<ConstNode<T>>(-1)),new_node->clone());
         auto neg_node = del_mult(ExprType::Multiply, std::static_pointer_cast<Node<T>>(std::make_shared<ConstNode<T>>(-1)), new_node->clone());
 
-        // return make(ExprType::Multiply, neg_node->clone(), arg_diff->clone());
         return del_mult(ExprType::Multiply, neg_node->clone(), arg_diff->clone());
     }
     case ExprType::Exp:
     {
         new_node = std::make_shared<FunctionNode<T>>(ExprType::Exp, arg->clone());
 
-        // return make(ExprType::Multiply, new_node->clone(), arg_diff->clone());
         return del_mult(ExprType::Multiply, new_node->clone(), arg_diff->clone());
     }
     case ExprType::Ln:
     {
         auto reciprocal = del_div(ExprType::Divide, std::static_pointer_cast<Node<T>>(std::make_shared<ConstNode<T>>(1)), arg->clone());
 
-        // return make(ExprType::Multiply, reciprocal->clone(), arg_diff->clone());
         return del_mult(ExprType::Multiply, reciprocal->clone(), arg_diff->clone());
     }
     }
@@ -606,35 +582,35 @@ Expression<T> &Expression<T>::operator=(Expression<T> &&other) noexcept
 template <Numeric T>
 Expression<T> Expression<T>::operator+(const Expression<T> &other) const
 {
-    auto newNode = std::make_shared<BinaryOpNode<T>>(ExprType::Add, this->root->clone(), other.clone());
+    auto newNode = del_zero(ExprType::Add, this->root->clone(), other.clone());
     return Expression<T>(newNode);
 }
 
 template <Numeric T>
 Expression<T> Expression<T>::operator-(const Expression<T> &other) const
 {
-    auto newNode = std::make_shared<BinaryOpNode<T>>(ExprType::Subtract, this->root->clone(), other.clone());
+    auto newNode = del_zero(ExprType::Subtract, this->root->clone(), other.clone());
     return Expression<T>(newNode);
 }
 template <Numeric T>
 
 Expression<T> Expression<T>::operator*(const Expression<T> &other) const
 {
-    auto newNode = std::make_shared<BinaryOpNode<T>>(ExprType::Multiply, this->root->clone(), other.clone());
+    auto newNode = del_mult(ExprType::Multiply, this->root->clone(), other.clone());
     return Expression<T>(newNode);
 }
 
 template <Numeric T>
 Expression<T> Expression<T>::operator/(const Expression<T> &other) const
 {
-    auto newNode = std::make_shared<BinaryOpNode<T>>(ExprType::Divide, this->root->clone(), other.clone());
+    auto newNode = del_div(ExprType::Divide, this->root->clone(), other.clone());
     return Expression(newNode);
 }
 
 template <Numeric T>
 Expression<T> Expression<T>::operator^(const Expression<T> &other) const
 {
-    auto newNode = std::make_shared<BinaryOpNode<T>>(ExprType::Power, this->root->clone(), other.clone());
+    auto newNode = del_pow(ExprType::Power, this->root->clone(), other.clone());
     return Expression<T>(newNode);
 }
 
@@ -664,13 +640,15 @@ std::ostream &operator<<(std::ostream &out, const Expression<T> &expr)
 }
 
 template <Numeric T>
-bool is_one(std::shared_ptr<Node<T>> node) {
+bool is_one(std::shared_ptr<Node<T>> node)
+{
     auto const_node = std::dynamic_pointer_cast<ConstNode<T>>(node);
     return (const_node && const_node->eval({}) == 1);
 }
 
 template <Numeric T>
-bool is_zero(std::shared_ptr<Node<T>> node) {
+bool is_zero(std::shared_ptr<Node<T>> node)
+{
     auto const_node = std::dynamic_pointer_cast<ConstNode<T>>(node);
     return (const_node && const_node->eval({}) == 0);
 }
@@ -723,7 +701,6 @@ int priority(char op)
 template <Numeric T>
 Expression<T> make_expression(const std::string &s)
 {
-
     std::stack<Expression<T>> vals;
     std::stack<char> ops;
 
@@ -791,6 +768,7 @@ Expression<T> make_expression(const std::string &s)
                         arg += s[i];
                     ++i;
                 }
+                --i;
                 if (arg.empty())
                     throw std::runtime_error("Expected argument\n");
                 auto expr_arg = make_expression<T>(arg);
@@ -798,10 +776,10 @@ Expression<T> make_expression(const std::string &s)
             }
             else
             {
+                --i;
                 vals.push(Expression<T>(token));
             }
         }
-
         else if (s[i] == '+' || s[i] == '-' || s[i] == '*' || s[i] == '/' || s[i] == '^')
         {
             while (!ops.empty() && priority(ops.top()) >= priority(s[i]))
