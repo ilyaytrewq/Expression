@@ -1,58 +1,34 @@
-#include <gtest/gtest.h>
+cmake_minimum_required(VERSION 3.19)
 
-#include "Expression.hpp"
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-TEST(ExpressionParsingTest, SimpleAddition) {
-    auto expr = symcpp::parse_expression("2 + 3");
-    EXPECT_EQ(expr.eval({}), 5);
-}
+project(symcpp)
 
-TEST(ExpressionParsingTest, VariableEvaluation) {
-    auto expr = symcpp::parse_expression("x + 3");
-    std::map<std::string, symcpp::Reals_t> vars = {{"x", 2}};
-    EXPECT_EQ(expr.eval(vars), 5);
-}
+include(FetchContent)
 
-TEST(ExpressionParsingTest, MultiplicationAndDivision) {
-    auto expr = symcpp::parse_expression("2 * x / 4");
-    std::map<std::string, symcpp::Reals_t> vars = {{"x", 8}};
-    EXPECT_EQ(expr.eval(vars), 4);
-}
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG release-1.12.1
+)
+FetchContent_MakeAvailable(googletest)
 
-TEST(ExpressionParsingTest, PowerFunction) {
-    auto expr = symcpp::parse_expression("x ^ 2");
-    std::map<std::string, symcpp::Reals_t> vars = {{"x", 3}};
-    EXPECT_EQ(expr.eval(vars), 9);
-}
+FetchContent_Declare(
+    cxxopts
+    GIT_REPOSITORY https://github.com/jarro2783/cxxopts.git
+    GIT_TAG        v3.1.0
+)
+FetchContent_MakeAvailable(cxxopts)
 
-TEST(ExpressionParsingTest, SinFunction) {
-    auto expr = symcpp::parse_expression("sin(x)");
-    std::map<std::string, symcpp::Reals_t> vars = {{"x", 0}};
-    EXPECT_EQ(expr.eval(vars), 0);
-}
+file(GLOB SRC src/*.cpp)
+add_library(src STATIC ${SRC})
 
-TEST(SymbolicDifferentiationTest, PowerFunction) {
-    auto expr = symcpp::parse_expression("x ^ 2");
-    auto diff_expr = expr.diff("x");
-    std::map<std::string, symcpp::Reals_t> vars = {{"x", 2}};
-    EXPECT_EQ(diff_expr.eval(vars), 4);
-}
+include_directories(include)
 
-TEST(SymbolicDifferentiationTest, SinFunction) {
-    auto expr = symcpp::parse_expression("sin(x)");
-    auto diff_expr = expr.diff("x");
-    std::map<std::string, symcpp::Reals_t> vars = {{"x", 0}};
-    EXPECT_EQ(diff_expr.eval(vars), 1);
-}
+add_executable(tests test/test.cpp)
+target_link_libraries(tests gtest gtest_main)
 
-TEST(SymbolicDifferentiationTest, LnFunction) {
-    auto expr = symcpp::parse_expression("ln(x)");
-    auto diff_expr = expr.diff("x");
-    std::map<std::string, symcpp::Reals_t> vars = {{"x", 1}};
-    EXPECT_EQ(diff_expr.eval(vars), 1);
-}
-
-int main(int argc, char **argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-}
+add_executable(main main.cpp)
+target_link_libraries(main gtest gtest_main)
