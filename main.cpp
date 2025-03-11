@@ -4,18 +4,13 @@
 
 int main()
 {
-
-    std::string s = "x";
-    Expression<int> b("x");
-    Expression<int> a(5);
-    auto c = ((b^2) + a).sin();
-    std::cout << a.to_string() << '\n';
-    std::cout << b.to_string() << '\n';
-    std::cout << c.to_string() << '\n';
-    std::map<std::string, int> m;
-    m["x"] = 5;
-    std::cout << c.eval(m) << '\n';
-    std::cout << c.diff("x").to_string() << '\n';
+    std::string s = "exp(x)*x";
+    auto exp = make_expression<Real>(s);
+    std::map<std::string, Real> m;
+    m["x"] = 2;
+    std::cout << exp.to_string() <<'\n';
+    std::cout << exp.diff("x").to_string() << '\n';
+    std::cout << exp.eval(m) << '\n';
 }
 /*
 cos(x^2+x)*2*x^2
