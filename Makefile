@@ -4,8 +4,9 @@ default_target:
 test: default_target
 	cd build && ./tests
 
-main: default_target
-	cd build && ./main
+
+differentiator: default_target
+	cd build && ./differentiator --help
 
 clear:
 	rm -rf ./build

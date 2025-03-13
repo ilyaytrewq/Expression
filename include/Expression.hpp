@@ -33,7 +33,6 @@ inline std::string ExprTypeToString(ExprType type);
 template <Numeric T>
 class Node
 {
-
 public:
     virtual ~Node() = default;
     virtual T eval(const std::map<std::string, T> &vars) const = 0;
