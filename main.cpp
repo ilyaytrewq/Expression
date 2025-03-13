@@ -1,17 +1,34 @@
-#include <C:\Users\Lenovo\projects\Expression\include\Expression.hpp>
 #include <iostream>
 #include <map>
+#include <Expression.hpp>
+#include <string>
 
-int main()
-{
-    std::string s = "x * (5 + 2 - 2) * 1 * 0 - 3 * x ^ 2";
-    auto exp = make_expression<Real>(s);
-    std::map<std::string, Real> m;
-    m["x"] = 2;
-    std::cout << exp.to_string() << '\n';
-    std::cout << exp.diff("x").to_string() << '\n';
-    std::cout << exp.eval(m) << '\n';
+int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        cerr << "Недоостаточно аргументов\n";
+        return 1;
+    }
+    std::string type = argv[1];
+    if(type == "--eval"){
+        std::string expr_str = argv[2];
+        std::map<std::string, Real> vars;
+        for(int i = 3; i < argc; ++i){
+            std::string Var = argv[i];
+            int pos = Var.find("=") - Var.begin();
+            std::var = Var.substr(0, pos);
+            Real val = Var.substr(pos + 1);
+            if(vars.count(var))
+                throw std::runtime_error("2 раза одна переменная")
+            vars[var] = val;
+        }
+        std::cout << make_expression(expr_string).eval(vars) << '\n';
+    }
+    else if (type == "--diff"){ 
+        if(argc != 5 || argv[3] != "--by")
+            throw std::runtime_error("некоректный запрос");
+        std::cout << make_expression(argv[2]).diff(arg[4]) << '\n';
+    }
+    else{
+        throw std::runtime_error("Unkown function");
+    }
 }
-/*
-cos(x^2+x)*2*x^2
-*/

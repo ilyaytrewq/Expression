@@ -4,7 +4,7 @@ default_target:
 test: default_target
 	cd build && ./tests
 
-test: default_target
+main: default_target
 	cd build && ./main
 
 clear:

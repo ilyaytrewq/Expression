@@ -318,7 +318,7 @@ template <Numeric T>
 std::shared_ptr<Node<T>> del_zero(ExprType type, std::shared_ptr<Node<T>> l, std::shared_ptr<Node<T>> r)
 {
     if (is_zero(l))
-        return r;
+        return (((type == ExprType::Subtract ? Expression<T>(-1) : Expression<T>(1))) * Expression(r)).clone();
     if (is_zero<T>(r))
         return l;
     if (l->getType() == ExprType::Constant && r->getType() == ExprType::Constant)
@@ -329,12 +329,12 @@ std::shared_ptr<Node<T>> del_zero(ExprType type, std::shared_ptr<Node<T>> l, std
 template <Numeric T>
 std::shared_ptr<Node<T>> del_mult(ExprType type, std::shared_ptr<Node<T>> l, std::shared_ptr<Node<T>> r)
 {
+    if (is_zero<T>(l) || is_zero<T>(r))
+        return std::make_shared<ConstNode<T>>(0);
     if (is_one<T>(l))
         return r;
     if (is_one<T>(r))
         return l;
-    if (is_zero<T>(l) || is_zero<T>(r))
-        return std::make_shared<ConstNode<T>>(0);
     if (l->getType() == ExprType::Constant && r->getType() == ExprType::Constant)
         return std::static_pointer_cast<Node<T>>(std::make_shared<ConstNode<T>>(l->eval({}) * r->eval({})));
     return make<T>(type, l, r);
@@ -698,9 +698,24 @@ int priority(char op)
     return -1;
 }
 
-template <Numeric T>
-Expression<T> make_expression(const std::string &s)
+bool is_operator(char c)
 {
+    return (c == '+' || c == '-' || c == '*' || c == '/' || c == '^');
+}
+
+template <Numeric T>
+Expression<T> make_expression(const std::string &t)
+{
+    std::string s = "";
+    for (char c : t)
+    {
+        if (c == ' ')
+            continue;
+        if (std::isalpha(c))
+            s += std::tolower(c);
+        else
+            s += c;
+    }
     std::stack<Expression<T>> vals;
     std::stack<char> ops;
 
@@ -780,32 +795,52 @@ Expression<T> make_expression(const std::string &s)
                 vals.push(Expression<T>(token));
             }
         }
-        else if (s[i] == '+' || s[i] == '-' || s[i] == '*' || s[i] == '/' || s[i] == '^')
+        else if (is_operator(s[i]))
         {
-            while (!ops.empty() && priority(ops.top()) >= priority(s[i]))
+            if (i == 0 || is_operator(s[i - 1]))
             {
-                char op = ops.top();
-                ops.pop();
-
-                auto right = vals.top();
-                vals.pop();
-                auto left = vals.top();
-                vals.pop();
-
-                if (op == '+')
-                    vals.push(left + right);
-                if (op == '-')
-                    vals.push(left - right);
-                if (op == '*')
-                    vals.push(left * right);
-                if (op == '/')
-                    vals.push(left / right);
-                if (op == '^')
-                    vals.push(left ^ right);
+                if (s[i] == '-')
+                {
+                    std::string tmp = "";
+                    while (i < s.size() && !is_operator(s[i]))
+                    {
+                        tmp += s[i];
+                        i++;
+                    }
+                    --i;
+                    vals.push(Expression<T>(-1) * make_expression<T>(tmp));
+                }
+                else
+                {
+                    throw std::runtime_error("Incorrect expression");
+                }
             }
-            ops.push(s[i]);
-        }
+            else
+            {
+                while (!ops.empty() && priority(ops.top()) >= priority(s[i]))
+                {
+                    char op = ops.top();
+                    ops.pop();
 
+                    auto right = vals.top();
+                    vals.pop();
+                    auto left = vals.top();
+                    vals.pop();
+
+                    if (op == '+')
+                        vals.push(left + right);
+                    if (op == '-')
+                        vals.push(left - right);
+                    if (op == '*')
+                        vals.push(left * right);
+                    if (op == '/')
+                        vals.push(left / right);
+                    if (op == '^')
+                        vals.push(left ^ right);
+                }
+                ops.push(s[i]);
+            }
+        }
         else if (s[i] == '(')
         {
             ops.push(s[i]);
