@@ -43,8 +43,9 @@ int main(int argc, char *argv[])
                 std::string Var = argv[i];
                 int pos = Var.find("=");
                 std::string var = Var.substr(0, pos);
-                std::cout << "var = " << Var.substr(pos + 1) << '\n';
+                // std::cout << "var = " << Var.substr(pos + 1) << '\n';
                 Complex val = ParseComplex(Var.substr(pos + 1));
+                // std::cout << val << '\n';
                 if (vars.count(var))
                     throw std::runtime_error("2 times one variable");
                 vars[var] = val;

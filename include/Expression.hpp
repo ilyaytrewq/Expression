@@ -740,6 +740,7 @@ bool is_complex(const std::string &s)
 
 Complex ParseComplex(const std::string &s)
 {
+    // std::cout << s << '\n';
     if (s.find('i') == std::string::npos)
         return Complex(stold(s), 0);
 
@@ -749,7 +750,13 @@ Complex ParseComplex(const std::string &s)
     if (pos_plus == std::string::npos && pos_minus == std::string::npos){ 
         return Complex(0, stold(s.substr(0, s.size() - 1)));
     }
-    int pos = std::min(pos_minus, pos_plus);
+    int pos = 0;
+    if(pos_plus == std::string::npos)
+        pos = pos_minus;
+    else
+        pos = pos_plus;    
+    // std::cout << stold(s.substr(0, pos)) << '\n';
+    // std::cout << stold(s.substr(pos + 1, s.size() - pos - 1)) << '\n';
     return Complex(stold(s.substr(0, pos)), stold(s.substr(pos + 1, s.size() - pos - 1)));
 }
 
