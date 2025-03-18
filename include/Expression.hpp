@@ -13,7 +13,22 @@
 #include <type_traits>
 
 using Real = long double;
-using Complex = std::complex<Real>;
+
+class Complex : public std::complex<Real>{
+    public:
+    using std::complex<Real>::complex;
+    explicit operator long double() const {
+        return static_cast<Real>(this->real());
+    }
+
+    Complex(const std::complex<Real>& other)
+        : std::complex<Real>(other) {}
+};
+
+std::string ToString(const Complex& c) {
+    return "(" + std::to_string(c.real()) + ", " + std::to_string(c.imag()) +
+           ")";
+}
 
 template <typename T>
 concept Numeric = std::is_arithmetic_v<T> || (std::is_same_v<T, Complex>);
@@ -254,7 +269,9 @@ T ConstNode<T>::eval(const std::map<std::string, T> &vars) const
 template <Numeric T>
 std::string ConstNode<T>::to_string() const
 {
-    return std::to_string(value);
+    if constexpr (std::is_same_v<T, Complex>)
+        return ToString(value);
+    else return std::to_string(value);
 }
 
 template <Numeric T>
@@ -279,9 +296,10 @@ VarNode<T>::VarNode(std::string s) : var(s), type(ExprType::Variable) {}
 template <Numeric T>
 T VarNode<T>::eval(const std::map<std::string, T> &vars) const
 {
+    if(var == "i")
+        return T(Complex(0, 1));
     if (vars.find(var) == vars.end())
         throw std::runtime_error("Variable '" + var + "' is not provided");
-
     return vars.find(var)->second;
 }
 
@@ -380,8 +398,11 @@ T BinaryOpNode<T>::eval(const std::map<std::string, T> &vars) const
         return left_val - right_val;
     case ExprType::Multiply:
         return left_val * right_val;
-    case ExprType::Divide:
+    case ExprType::Divide:{
+        if(right_val == T(0))
+            throw std::runtime_error("division by 0");
         return left_val / right_val;
+    }
     case ExprType::Power:
         return std::pow(left_val, right_val);
     }
@@ -472,8 +493,18 @@ T FunctionNode<T>::eval(const std::map<std::string, T> &vars) const
         return std::cos(arg_val);
     case ExprType::Exp:
         return std::exp(arg_val);
-    case ExprType::Ln:
-        return std::log(arg_val);
+    case ExprType::Ln: {
+        if(arg_val == T(0))
+            throw std::runtime_error("ln argument must be not 0");
+        if constexpr (std::is_same_v<T, Complex>)
+        {}
+        else{
+            if(arg_val <= T(0)) {
+                throw std::runtime_error("ln argument must be more 0");
+            }
+        }
+        return std::log(arg_val);   
+    }
     }
     throw std::runtime_error("Fuction doesn`t exist");
 }
@@ -642,14 +673,14 @@ template <Numeric T>
 bool is_one(std::shared_ptr<Node<T>> node)
 {
     auto const_node = std::dynamic_pointer_cast<ConstNode<T>>(node);
-    return (const_node && const_node->eval({}) == 1);
+    return (const_node && const_node->eval({}) == T(1));
 }
 
 template <Numeric T>
 bool is_zero(std::shared_ptr<Node<T>> node)
 {
     auto const_node = std::dynamic_pointer_cast<ConstNode<T>>(node);
-    return (const_node && const_node->eval({}) == 0);
+    return (const_node && const_node->eval({}) == T(0));
 }
 
 template <Numeric T>
@@ -700,6 +731,26 @@ int priority(char op)
 bool is_operator(char c)
 {
     return (c == '+' || c == '-' || c == '*' || c == '/' || c == '^');
+}
+
+bool is_complex(const std::string &s)
+{
+    return s.find('i') < s.size();
+}
+
+Complex ParseComplex(const std::string &s)
+{
+    if (s.find('i') == std::string::npos)
+        return Complex(stold(s), 0);
+
+    int pos_plus = s.find('+');
+    int pos_minus = s.find('-');
+
+    if (pos_plus == std::string::npos && pos_minus == std::string::npos){ 
+        return Complex(0, stold(s.substr(0, s.size() - 1)));
+    }
+    int pos = std::min(pos_minus, pos_plus);
+    return Complex(stold(s.substr(0, pos)), stold(s.substr(pos + 1, s.size() - pos - 1)));
 }
 
 template <Numeric T>
