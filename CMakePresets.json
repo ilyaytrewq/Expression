@@ -1,0 +1,23 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "default",
+      "displayName": "Default Config",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build"
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "build",
+      "configurePreset": "default",
+      "targets": ["build"]
+    },
+    {
+      "name": "test",
+      "configurePreset": "default",
+      "targets": ["test"]
+    }
+  ]
+}

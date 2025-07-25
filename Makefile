@@ -8,5 +8,5 @@ test: default_target
 differentiator: default_target
 	cd build && ./differentiator --help
 
-clear:
+clean:
 	rm -rf ./build

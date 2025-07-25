@@ -15,12 +15,21 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(googletest)
 
-file(GLOB SRC src/*.cpp)
-add_library(src STATIC ${SRC})
-
 include_directories(include)
 
 add_executable(tests test/test.cpp)
 target_link_libraries(tests gtest gtest_main)
 
-add_executable(differentiator main.cpp)
+add_executable(differentiator differentiator.cpp)
+
+add_custom_target(test
+    COMMAND tests
+    DEPENDS tests 
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMENT "Running tests"
+)
+
+add_custom_target(build
+    DEPENDS differentiator tests
+    COMMENT "Building all targets"
+)
