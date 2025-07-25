@@ -1,5 +1,4 @@
 #include <gtest/gtest.h>
-
 #include "Expression.hpp"
 
 TEST(ExpressionParsingTest, SimpleAddition) {
