@@ -22,7 +22,7 @@ target_link_libraries(tests gtest gtest_main)
 
 add_executable(differentiator differentiator.cpp)
 
-add_custom_target(test
+add_custom_target(run_tests
     COMMAND tests
     DEPENDS tests 
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
