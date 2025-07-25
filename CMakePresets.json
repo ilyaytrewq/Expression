@@ -7,7 +7,7 @@
       "generator": "Unix Makefiles",
       "binaryDir": "${sourceDir}/build"
     }
-  ],
+  ], 
   "buildPresets": [
     {
       "name": "build",
