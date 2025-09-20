@@ -37,7 +37,7 @@ Expression/
 1. **Клонировать репозиторий**
 
    ```bash
-   git clone https://github.com/<your-user>/Expression.git
+   git clone https://github.com/ilyaytrewq/Expression.git
    cd Expression
    ```
 
